@@ -10,8 +10,8 @@ import numpy as np
 import random
 import torch.nn.init as init
 import pandas as pd
-#If you want to use specific genes, you should modify line 68,118. If you performance benchmarking, make sure line 68 denote the expression level of FCRL4. 
-#If you want to use specific size, you shoule modify line 64, 69, 86, 87, 130
+#If you want to use specific genes, you should modify line 68,118. 
+#If you want to use specific size, you shoule modify line 64, 68, 69, 86, 87, 118, 130
 
 path = '/path/to/your/data'
 class mae2(nn.Module):
