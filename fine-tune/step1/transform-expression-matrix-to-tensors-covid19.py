@@ -11,8 +11,9 @@ import random
 import torch.nn.init as init
 import pandas as pd
 
-path = '/path/to/your/data'
 
+
+path = '/path/to/your/data'
 class mae2(nn.Module):
     def __init__(self):
         super(mae2, self).__init__()
