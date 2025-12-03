@@ -13,7 +13,6 @@ import numpy as np
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
 import re
-
 path = '/path/to/your/data'
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
