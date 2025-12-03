@@ -266,7 +266,7 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
 def main(random_state=777):
     os.chdir(path)
     tensor_dir = './tensors'
-    labels_file = './label.csv' #label file
+    labels_file = './tensors/label.csv' #label file
     for i in range(1, 6):
         os.makedirs(os.path.join(path, str(i)), exist_ok=True)
     dataset = TensorDataset(tensor_dir, labels_file)
