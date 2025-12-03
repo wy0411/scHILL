@@ -10,7 +10,7 @@ import torch.nn.init as init
 import pandas as pd
 from statistics import mean
 
-path = '/path/to/your/data'
+path = '/disk1/wangyi/aaatest'
 
 class ProjectionModel(nn.Module):
     def __init__(self, num_cells, num_genes):
@@ -25,28 +25,21 @@ class ProjectionModel(nn.Module):
     def forward(self, input):
         x = input + 1
         x = self.mlp1(x)
-        m = x.clone()
-        q = m.permute(0, 2, 1)
-        qq = q.clone()
-        qqq = nn.functional.linear(qq, self.mlp2.weight.clone(), self.mlp2.bias)
-        e = qqq.clone()
-        w = e.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)
+        x = nn.functional.linear(x, self.mlp2.weight.clone(), self.mlp2.bias)
+        w = x.permute(0, 2, 1)
 
-        y = w.clone()
-        t = y.permute(0, 2, 1)
-        r = t.clone()
-        r = r - self.mlp2.bias
+        x = w.permute(0, 2, 1)
+        x = x - self.mlp2.bias
         pinv1 = torch.linalg.pinv(self.mlp2.weight)
-        r = torch.matmul(r, pinv1.T)
-        u = r.clone()
-        u = u.permute(0, 2, 1)
-        g = u.clone()
-        g = g - self.mlp1.bias
+        x = torch.matmul(x, pinv1.T)
+        x = x.permute(0, 2, 1)
+        x = x - self.mlp1.bias
         pinv2 = torch.linalg.pinv(self.mlp1.weight)
-        g = torch.matmul(g, pinv2.T)
-        g = g - 1
+        x = torch.matmul(x, pinv2.T)
+        x = x - 1
 
-        projection_loss = self.loss(g, input)
+        projection_loss = self.loss(x, input)
         out = w.clone()
 
         return out, projection_loss
@@ -171,16 +164,19 @@ def train(model_mae2, model_projection1a,  model_projection1c, model_projection3
         optimizer_projection1a.zero_grad()
         loss1a.backward()
         optimizer_projection1a.step()
+        projected1a = projected1a.detach()
 
         projected1c, loss1c = model_projection1c(matrix1c)
         optimizer_projection1c.zero_grad()
         loss1c.backward()
         optimizer_projection1c.step()
+        projected1c = projected1c.detach()
 
         projected3a, loss3a = model_projection3a(matrix3a)
         optimizer_projection3a.zero_grad()
         loss3a.backward()
         optimizer_projection3a.step()
+        projected3a = projected3a.detach()
 
         coeffs = torch.rand(17, 3)
         coeffs /= coeffs.sum(dim=1, keepdim=True)
