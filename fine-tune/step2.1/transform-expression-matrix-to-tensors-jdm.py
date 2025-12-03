@@ -11,8 +11,8 @@ import random
 import torch.nn.init as init
 import pandas as pd
 
-#If you want to use specific genes, you should modify line 124. 
-#If you want to use specific size, you shoule modify line 67, 68, 77, 94, 95, 124, 134
+#If you want to use specific genes or specific size, you should modify line 67, 68, 77, 94, 95, 124, 134. 
+
 path = '/path/to/your/data'
 class mae2(nn.Module):
     def __init__(self):
