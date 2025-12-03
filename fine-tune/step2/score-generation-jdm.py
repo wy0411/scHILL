@@ -138,6 +138,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, num_epo
             total_loss2 = torch.zeros(1).to(device)
             outputs = model2(tensors)
             preds = torch.max(outputs, 1)
+            total_loss2 = criterion(outputs, labels1).to(device)
             optimizer2.zero_grad()
             total_loss2.backward()
             optimizer2.step()
