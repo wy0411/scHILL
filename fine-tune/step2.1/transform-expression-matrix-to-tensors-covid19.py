@@ -10,8 +10,8 @@ import numpy as np
 import random
 import torch.nn.init as init
 import pandas as pd
-
-
+#If you want to use specific genes, you should modify line 72,121. If you performance benchmarking, make sure line 72 denote the expression level of RPS18. 
+#If you want to use specific size, you shoule modify line 69, 72, 73, 89, 90, 123, 135. If you performance benchmarking, make sure line 72 denote the expression level of RPS18. 
 
 path = '/path/to/your/data'
 class mae2(nn.Module):
@@ -86,8 +86,8 @@ def get_final_matrix(file_path, gene_list_path):
     return expression_matrix
 def matrix2tensor(matrix):
 
-    row_split = np.split(matrix, 5, axis=0)
-    matrix2 = np.array([np.split(sub_matrix, 5, axis=1) for sub_matrix in row_split]).reshape(25, 448, 448)
+    row_split = np.split(matrix, 5, axis=0)#average split for row (cells)
+    matrix2 = np.array([np.split(sub_matrix, 5, axis=1) for sub_matrix in row_split]).reshape(25, 448, 448)#average split for column (genes)
     tensor = torch.from_numpy(matrix2).float()
     dataset = TensorDataset(tensor, tensor)
     return dataset
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
 
             dataset = matrix2tensor(expression_matrix)
-            data_loader = DataLoader(dataset, batch_size=25, shuffle=False)
+            data_loader = DataLoader(dataset, batch_size=25, shuffle=False)#batchsize X should be the same with N ,where (N,224,224) in line 90
 
             output_tensor = train(model_mae2, data_loader, device=device)
 
