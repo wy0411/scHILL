@@ -10,8 +10,8 @@ import numpy as np
 import random
 import torch.nn.init as init
 import pandas as pd
-#If you want to use specific genes, you should modify line 72,121. If you performance benchmarking, make sure line 72 denote the expression level of RPS18. 
-#If you want to use specific size, you shoule modify line 69, 72, 73, 89, 90, 123, 135. If you performance benchmarking, make sure line 72 denote the expression level of RPS18. 
+
+#If you want to use specific size or specific genes, you shoule modify line 69, 72, 73, 89, 90, 123, 135. If you performance benchmarking, make sure line 72 denote the expression level of RPS18. 
 
 path = '/path/to/your/data'
 class mae2(nn.Module):
