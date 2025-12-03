@@ -91,8 +91,9 @@ def get_final_matrix(file_path, gene_list_path):
 
 
 def matrix2tensor(matrix):
-    tensor = torch.from_numpy(matrix).float()
-    tensor = tensor.unsqueeze(0)
+    row_split = np.split(matrix, 1, axis=0)
+    matrix2 = np.array([np.split(sub_matrix, 1, axis=1) for sub_matrix in row_split]).reshape(1, 224, 224)
+    tensor = torch.from_numpy(matrix2).float()
     dataset = TensorDataset(tensor, tensor)
     return dataset
 
