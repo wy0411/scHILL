@@ -170,7 +170,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, num_epo
 def main():
     os.chdir(path)
     tensor_dir = './tensors'
-    labels_file = './label.csv' #label file
+    labels_file = './tensors/label.csv' #label file
     dataset = TensorDataset(tensor_dir, labels_file)
     input_size = 784 * 256
     hidden_size1 = 784
