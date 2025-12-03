@@ -314,7 +314,7 @@ def main(random_state=777):
                         device), file_name
                     tensors1 = tensors.squeeze(0)
                     outputs = torch.nn.functional.softmax(model(tensors1), dim=1).mean(dim=0).unsqueeze(0)
-                    if (torch.argmax(outputs, dim=1).item() == 0):  # disease
+                    if labels2 == 0:  # disease
                         outputs = torch.nn.functional.softmax(model2(tensors1), dim=1).mean(dim=0).unsqueeze(0)
                         print(f'file:{file_name}, point:{outputs[0, 1].item() + outputs[0, 0].item() * 2}')
 
