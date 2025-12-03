@@ -217,7 +217,9 @@ def main():
                     tensors1 = tensors.squeeze(0)
                     outputs = torch.nn.functional.softmax(model2(tensors1), dim=1)
                     if labels1 == 1: #disease
-                        print(f'file:{file_name}, point:{outputs[0, 1].item()}')
+                        with open(f"{i}/{i}.log", "a") as f:
+                            f.write(f'file:{file_name}, point:{outputs[0, 1].item()}\n')
+
 
     folders = ["1", "2", "3", "4", "5"]
     records = []
