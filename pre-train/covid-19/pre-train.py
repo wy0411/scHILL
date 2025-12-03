@@ -10,7 +10,7 @@ import torch.nn.init as init
 import pandas as pd
 from statistics import mean
 
-path = '/disk1/wangyi/aaatest'
+path = '/your/path/to/files' #your own path
 
 class ProjectionModel(nn.Module):
     def __init__(self, num_cells, num_genes):
