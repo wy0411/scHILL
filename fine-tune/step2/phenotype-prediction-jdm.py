@@ -101,7 +101,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
     model2.to(device)
     
     for epoch in range(num_epochs):
-        # 训练阶段
+        # Training
         model2.train()
 
         for tensors, labels1, labels2 in train_loader:
@@ -115,7 +115,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
             optimizer2.step()
             
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss2.item():.4f}', flush=True)      
-        # 验证阶段
+        # Validation
         model2.eval()
         val_labels = []
         val_preds = []
@@ -146,7 +146,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
 
         val_labels = []
         val_preds = []
-
+        #Test
         for tensors, labels1, labels2 in test_loader:
                 tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
                 tensors = tensors.squeeze(0)
