@@ -180,7 +180,8 @@ def main():
     num_classes = 2
     num_epochs = 500
     learning_rate = 0.5
-
+    for i in range(1, 6):
+        os.makedirs(os.path.join(path, str(i)), exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seed_torch(seed=1)
     label = dataset.labels1
