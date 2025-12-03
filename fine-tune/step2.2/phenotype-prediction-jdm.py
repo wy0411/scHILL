@@ -112,8 +112,10 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
             tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
             tensors = tensors.squeeze(0)
             # 前向传播
-            outputs = model2(tensors)
-            total_loss2 = criterion(outputs, labels1).to(device)
+            for i in range(tensors.size(0)):
+                outputs = model2(tensors)
+                loss = criterion(outputs, labels1).to(device)
+                total_loss2 += loss
             optimizer2.zero_grad()
             total_loss2.backward()
             optimizer2.step()
@@ -126,9 +128,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         with torch.no_grad():
             for tensors, labels1, labels2 in val_loader:
                 tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
-                tensors = tensors.squeeze(0)
-                #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
-                outputs = model2(tensors)
+                outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
                 _, preds = torch.max(outputs, 1)
                 val_labels.extend(labels1.cpu().numpy())
                 val_preds.extend(preds.cpu().numpy())
@@ -153,9 +153,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         #Test
         for tensors, labels1, labels2 in test_loader:
                 tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
-                tensors = tensors.squeeze(0)
-                #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
-                outputs = model2(tensors)
+                outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
                 _, preds = torch.max(outputs, 1)
                 val_labels.extend(labels1.cpu().numpy())
                 val_preds.extend(preds.cpu().numpy())
