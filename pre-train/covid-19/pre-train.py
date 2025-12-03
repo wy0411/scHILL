@@ -201,6 +201,7 @@ def train(model_mae2, model_projection1a,  model_projection1c, model_projection3
 
 # Assuming you have a DataLoader `data_loader` with your data
 if __name__ == "__main__":
+    os.chdir(path)
     folder_path = "./h5ad" # Folder stores h5ad files. If your h5ad file is merged and contains numerous individuals, please split it.
     model_save_path2 = "./pretrain/mae.pth" # Folder stores pre-trained models.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
