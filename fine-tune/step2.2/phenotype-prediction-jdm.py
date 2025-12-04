@@ -8,9 +8,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 from sklearn.metrics import classification_report
 from timm.models.vision_transformer import PatchEmbed, Block
-
-
-
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
 
 path='/path/to/your/data'
@@ -100,6 +100,7 @@ class EarlyStopping:
         else:
             self.best_score = score
             self.counter = 0
+        return self.best_score
 
 def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_loader, num_epochs, device, early_stopping):
     model2.to(device)
@@ -112,15 +113,13 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
             tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
             tensors = tensors.squeeze(0)
             # 前向传播
-            for i in range(tensors.size(0)):
-                outputs = model2(tensors)
-                loss = criterion(outputs, labels1).to(device)
-                total_loss2 += loss
+            outputs = model2(tensors)
+            total_loss2 = criterion(outputs, labels1).to(device)
             optimizer2.zero_grad()
             total_loss2.backward()
             optimizer2.step()
             
-        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss2.item():.4f}', flush=True)      
+        #print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss2.item():.4f}', flush=True)      
         # Validation
         model2.eval()
         val_labels = []
@@ -128,7 +127,9 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         with torch.no_grad():
             for tensors, labels1, labels2 in val_loader:
                 tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
-                outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
+                tensors = tensors.squeeze(0)
+                #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
+                outputs = model2(tensors)
                 _, preds = torch.max(outputs, 1)
                 val_labels.extend(labels1.cpu().numpy())
                 val_preds.extend(preds.cpu().numpy())
@@ -139,11 +140,11 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         val_f1 = f1_score(val_labels, val_preds, average='weighted')
         val_mcc = matthews_corrcoef(val_labels, val_preds)
 
-        print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
-              f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
-        print(classification_report(val_labels, val_preds, target_names=['JDM', 'Control']))
+        #print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
+        #      f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
+        #print(classification_report(val_labels, val_preds, target_names=['JDM', 'Control']))
 
-        early_stopping(val_mcc)
+        best_mcc=early_stopping(val_mcc)
         if early_stopping.early_stop:
             print("Early stopping triggered. Stopping training...")
             break
@@ -153,21 +154,26 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         #Test
         for tensors, labels1, labels2 in test_loader:
                 tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
-                outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
+                tensors = tensors.squeeze(0)
+                #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
+                outputs = model2(tensors)
                 _, preds = torch.max(outputs, 1)
                 val_labels.extend(labels1.cpu().numpy())
                 val_preds.extend(preds.cpu().numpy())
 
-        val_accuracy = accuracy_score(val_labels, val_preds)
-        val_precision = precision_score(val_labels, val_preds, average='weighted')
-        val_recall = recall_score(val_labels, val_preds, average='weighted')
-        val_f1 = f1_score(val_labels, val_preds, average='weighted')
-        val_mcc = matthews_corrcoef(val_labels, val_preds)
-
-        print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
-              f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
-        print(classification_report(val_labels, val_preds, target_names=['JDM', 'Control']))
-
+        test_accuracy = accuracy_score(val_labels, val_preds)
+        test_precision = precision_score(val_labels, val_preds, average='weighted')
+        test_recall = recall_score(val_labels, val_preds, average='weighted')
+        test_f1 = f1_score(val_labels, val_preds, average='weighted')
+        test_mcc = matthews_corrcoef(val_labels, val_preds)
+        if best_mcc == val_mcc:
+            result_precision = test_precision
+            result_recall = test_recall
+            result_f1 = test_f1
+        #print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
+        #      f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
+        #print(classification_report(val_labels, val_preds, target_names=['JDM', 'Control']))
+    return result_precision,result_recall,result_f1
 def main(random_state=777):
     os.chdir(path)
     tensor_val_dir = './tensors'
@@ -196,8 +202,8 @@ def main(random_state=777):
     criterion = nn.CrossEntropyLoss()
     #optimizer = optim.AdamW(model.parameters(), lr= learning_rate , betas=(0.9, 0.999))
     optimizer2 = optim.AdamW(model2.parameters(), lr= learning_rate/5 , betas=(0.9, 0.999))
-    train_model(model2,criterion, optimizer2, train_loader, val_loader, test_loader, num_epochs, device, early_stopping)
-
+    result_precision,result_recall,result_f1 = train_model(model2,criterion, optimizer2, train_loader, val_loader, test_loader, num_epochs, device, early_stopping)
+    print(f'precision:{result_precision}, recall:{result_recall}, f1:{result_f1}')
 
 if __name__ == '__main__':
     seed_torch(777)
