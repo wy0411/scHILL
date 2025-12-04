@@ -321,4 +321,4 @@ def main(random_state=777):
 
 if __name__ == '__main__':
     seed_torch(777)
-    main(random_state=1928)
+    main(random_state=28)
