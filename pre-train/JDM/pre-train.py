@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     torch.autograd.set_detect_anomaly(True)
 
-    for epoch in range(60000):
+    for epoch in range(10001):
         file_path = get_random_file_from_folder(folder_path)
         expression_matrix, num_cells, num_genes = load_data_from_h5ad(file_path)
 
