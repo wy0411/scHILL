@@ -11,7 +11,7 @@ import random
 import torch.nn.init as init
 import pandas as pd
 
-#If you want to use specific genes or specific size, you may modify line 67, 68, 77, 94, 95, 124, 134. 
+
 
 path = '/path/to/your/data'
 class mae2(nn.Module):
@@ -91,9 +91,8 @@ def get_final_matrix(file_path, gene_list_path):
 
 
 def matrix2tensor(matrix):
-    row_split = np.split(matrix, 1, axis=0) #average split for row (cells)
-    matrix2 = np.array([np.split(sub_matrix, 1, axis=1) for sub_matrix in row_split]).reshape(1, 224, 224) #average split for column (genes)
-    tensor = torch.from_numpy(matrix2).float()
+    tensor = torch.from_numpy(matrix).float()
+    tensor = tensor.unsqueeze(0)
     dataset = TensorDataset(tensor, tensor)
     return dataset
 
@@ -131,7 +130,7 @@ if __name__ == "__main__":
             expression_matrix, selected_genes = get_final_matrix(file_path, gene_list_path)
             #all_selected_genes.update(selected_genes)
             dataset = matrix2tensor(expression_matrix)
-            data_loader = DataLoader(dataset, batch_size=1, shuffle=False) #batchsize X should be the same with N ,where (N,224,224) in line 95
+            data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
             output_tensor = train(model_mae2, data_loader, device=device)
             output_filename = os.path.splitext(filename)[0] + ".pt"
             output_file_path = os.path.join(output_folder, output_filename)
