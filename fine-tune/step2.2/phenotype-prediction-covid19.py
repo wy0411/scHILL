@@ -6,15 +6,11 @@ from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
-from sklearn.metrics import classification_report
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
 from timm.models.vision_transformer import PatchEmbed, Block
-
-
-
-
-
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 path= '/path/to/your/data'
-
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 def seed_torch(seed=777):
@@ -139,14 +135,15 @@ class EarlyStopping:
         # 如果当前分数没有改善
         elif score < self.best_score + self.delta:
             self.counter += 1
-            if self.verbose:
-                print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
+            #if self.verbose:
+                #print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
         # 如果当前分数有改善
         else:
             self.best_score = score
             self.counter = 0
+        return self.best_score
 
 
 def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, val_loader, test_loader, num_epochs,
@@ -188,7 +185,7 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
                 total_loss2.backward()
                 optimizer2.step()
 
-        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss2.item():.4f}', flush=True)
+        #print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {total_loss2.item():.4f}', flush=True)
 
         # Validation
         model.eval()
@@ -227,12 +224,12 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
         val_f1 = f1_score(val_labels, val_preds, average='weighted')
         val_mcc = matthews_corrcoef(val_labels, val_preds)
 
-        print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
-              f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
-        print(
-            classification_report(val_labels, val_preds, target_names=['severe/critical', 'mild/moderate', 'control']))
+        #print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
+        #      f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
+        #print(
+        #    classification_report(val_labels, val_preds, target_names=['severe/critical', 'mild/moderate', 'control']))
 
-        early_stopping(val_mcc)
+        best_mcc = early_stopping(val_mcc)
         if early_stopping.early_stop:
             print("Early stopping triggered. Stopping training...")
             break
@@ -266,17 +263,22 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
                 val_labels.extend(labels1.cpu().numpy())
                 val_preds.extend(preds.cpu().numpy())
 
-        val_accuracy = accuracy_score(val_labels, val_preds)
-        val_precision = precision_score(val_labels, val_preds, average='weighted')
-        val_recall = recall_score(val_labels, val_preds, average='weighted')
-        val_f1 = f1_score(val_labels, val_preds, average='weighted')
-        val_mcc = matthews_corrcoef(val_labels, val_preds)
+        test_accuracy = accuracy_score(val_labels, val_preds)
+        test_precision = precision_score(val_labels, val_preds, average='weighted')
+        test_recall = recall_score(val_labels, val_preds, average='weighted')
+        test_f1 = f1_score(val_labels, val_preds, average='weighted')
+        test_mcc = matthews_corrcoef(val_labels, val_preds)
 
-        print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
-              f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
-        print(
-            classification_report(val_labels, val_preds, target_names=['severe/critical', 'mild/moderate', 'control']))
+        if best_mcc == val_mcc:
+            result_precision = test_precision
+            result_recall = test_recall
+            result_f1 = test_f1
 
+        #print(f'Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, '
+        #      f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
+        #print(
+        #    classification_report(val_labels, val_preds, target_names=['severe/critical', 'mild/moderate', 'control']))
+    return result_precision,result_recall,result_f1
 
 def main(random_state=777):
     os.chdir(path)
@@ -309,8 +311,9 @@ def main(random_state=777):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999))
     optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate / 5, betas=(0.9, 0.999))
-    train_model(model, model2, criterion, optimizer, optimizer2, train_loader, val_loader, test_loader, num_epochs,
+    result_precision,result_recall,result_f1 = train_model(model, model2, criterion, optimizer, optimizer2, train_loader, val_loader, test_loader, num_epochs,
                 device, early_stopping)
+    print(f'precision:{result_precision}, recall:{result_recall}, f1:{result_f1}')
 
 
 if __name__ == '__main__':
