@@ -120,11 +120,11 @@ if __name__ == "__main__":
     output_folder = "./tensors"
     gene_list_path = './hvg' # your own HVG file
     os.makedirs(output_folder, exist_ok=True)
-    with open("./h5ad", "r") as f:
-        valid_filenames = [line.strip() for line in f]
+    #with open("./h5ad", "r") as f:
+    #    valid_filenames = [line.strip() for line in f]
     # 遍历文件夹中所有 .h5ad 文件
     for filename in os.listdir(input_folder):
-        if filename.endswith(".h5ad") and filename in valid_filenames:
+        if filename.endswith(".h5ad"):
             file_path = os.path.join(input_folder, filename)
 
 
