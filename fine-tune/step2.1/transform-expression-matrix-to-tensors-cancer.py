@@ -3,7 +3,7 @@ import torch.nn as nn
 import anndata
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-import model_mae_finetune
+import model_mae_finetune_cancer
 import os
 import scanpy as sc
 import numpy as np
