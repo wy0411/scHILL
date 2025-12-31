@@ -1,6 +1,6 @@
 # scHILL
 scHILL is developed to decipher individual-level immune cell heterogeneity with single-cell RNA sequencing data with masked autoencoder(MAE, Kaiming He et al.)
-![model](./fig1.tif)
+![model](./workflow.svg)
 
 # Usage
 __Step 1: Pre-training__<br>
