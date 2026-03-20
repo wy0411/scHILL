@@ -261,7 +261,7 @@ def run_univariate(X, y, output_file):
 
 def main():
     os.chdir(path)
-    tensor_dir = './tensors'
+    tensor_dir = './tensors_xxx_xxx' #the Best folder depends on output of phenotype-prediction-jdm.py. Please run phenotype-prediction-jdm.py firstly.
     labels_file = './label.csv' #label file
     h5ad_dir = './h5ad'
     hvg = './hvg'
