@@ -179,7 +179,7 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
             total_loss1 = 0
             total_loss2 = torch.zeros(1).to(device)
 
-            for i in range(25):
+            for i in range(tensors.size(0)):
                 tensors1 = tensors[i].unsqueeze(0)
                 outputs = model(tensors1)
                 loss1 = criterion(outputs, labels2)
@@ -260,50 +260,139 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
 
     return best_accuracy, best_precision, best_recall, best_f1, best_mcc
 
+def build_features(h5ad_dir, score_file,hvg_file ,celltype_col="cluster_label"):
 
-def main(random_state=777):
+    score_df = pd.read_csv(score_file, sep=",")
+    samples = score_df["sample"].tolist()
+        # 读取 HVG
+    with open(hvg_file) as f:
+        hvg = [line.strip() for line in f]
+    
+    gene_features = []
+    cell_features = []
+
+    for sample in samples:
+
+        h5_path = os.path.join(h5ad_dir, sample + ".h5ad")
+        adata = sc.read_h5ad(h5_path)
+        genes = [g for g in hvg if g in adata.var_names]
+        adata = adata[:, genes]
+        X = adata.X
+        if not isinstance(X, np.ndarray):
+            X = X.toarray()
+
+        # =====================
+        # 1 pseudobulk gene
+        # =====================
+
+        pseudobulk = X.mean(axis=0)
+        gene_features.append(pseudobulk)
+
+        # =====================
+        # 2 cell proportion
+        # =====================
+
+        counts = adata.obs[celltype_col].value_counts()
+        prop = counts / counts.sum()
+
+        cell_features.append(prop)
+
+    gene_features = np.vstack(gene_features)
+
+    gene_df = pd.DataFrame(
+        gene_features,
+        index=samples,
+        columns=adata.var_names
+    )
+
+    cell_df = pd.DataFrame(cell_features, index=samples).fillna(0)
+
+    return gene_df, cell_df, score_df
+
+def run_univariate(X, y, output_file):
+
+    results = []
+
+    for gene in X.columns:
+
+        x = X[[gene]].values
+
+        model = LinearRegression()
+        model.fit(x, y)
+
+        coef = model.coef_[0]
+        intercept = model.intercept_
+        r2 = model.score(x, y) 
+        r, p = pearsonr(X[gene], y)
+
+        results.append([
+            gene,
+            coef,
+            r2,
+            intercept,
+            r,
+            p
+        ])
+
+    result_df = pd.DataFrame(
+        results,
+        columns=["feature","coef","R2","intercept","correlation","pvalue"]
+    )
+
+    result_df = result_df.sort_values(
+        "correlation",
+        key=np.abs,
+        ascending=False
+    )
+
+    result_df.to_csv(output_file, sep="\t", index=False)
+
+    print(f"{len(result_df)} features tested")
+
+def main():
     os.chdir(path)
     tensor_dir = './tensors'
-    labels_file = './tensors/label.csv' #label file
-    for i in range(1, 6):
-        os.makedirs(os.path.join(path, str(i)), exist_ok=True)
+    labels_file = './label.csv' #label file
+    h5ad_dir = './h5ad'
+    hvg = './hvg'
     dataset = TensorDataset(tensor_dir, labels_file)
-
+    input_size = 784 * 256
     hidden_size1 = 784
     hidden_size3 = 784
     hidden_size5 = 784
     num_classes = 2
-    num_epochs = 100
-    learning_rate = 0.001
-
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    num_epochs = 500
+    learning_rate = 5e-1
     for i in range(1, 6):
-        kf = KFold(n_splits=5, shuffle=True, random_state=i)
-        all_metrics = []
+        os.makedirs(os.path.join(path, str(i)), exist_ok=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    seed_torch(seed=1)
+    label = dataset.labels1
+    for i in range(1, 6):
+        log_path = f"./{i}/{i}.log"
+        open(log_path, "w").close()
+        kf = KFold(n_splits=10, shuffle=True, random_state=i)
         for fold, (train_idx, val_idx) in enumerate(kf.split(np.arange(len(dataset)))):
             print(f"Starting Fold {fold + 1}/5", flush=True)
-            model = MLP(hidden_size1, hidden_size3, hidden_size5, num_classes).to(device)
             model2 = MLP2(hidden_size1, hidden_size3, hidden_size5).to(device)
             early_stopping = EarlyStopping(patience=150, delta=0, verbose=False)
             criterion = nn.CrossEntropyLoss()
-            optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999))
-            optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate / 5, betas=(0.9, 0.999))
+            optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate, betas=(0.9, 0.999))
 
             train_data = torch.utils.data.Subset(dataset, train_idx)
             val_data = torch.utils.data.Subset(dataset, val_idx)
 
-            train_loader = DataLoader(train_data, batch_size=1, shuffle=True)
+            train_loader = DataLoader(train_data, batch_size=1, shuffle=False)
             val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
             save_model_path = f'./{i}/best_model_fold{fold}.pt'
-            val_accuracy, val_precision, val_recall, val_f1, val_mcc = train_model(model, model2, criterion, optimizer,
+            val_accuracy, val_precision, val_recall, val_f1, val_mcc = train_model(model2, criterion,
                                                                                optimizer2, train_loader, val_loader,
                                                                                num_epochs, device, early_stopping,
                                                                                save_model_path)
-            model = MLP(hidden_size1, hidden_size3, hidden_size5, num_classes).to(device)
             model2 = MLP2(hidden_size1, hidden_size3, hidden_size5).to(device)
 
-            checkpoint = torch.load(f'./{i}/best_model_fold{fold}.pt', weights_only=False)
-            model.load_state_dict(checkpoint['model_state_dict'])
+            checkpoint = torch.load(f'./{i}/best_model_fold{fold}.pt',
+                                weights_only=False)
             model2.load_state_dict(checkpoint['model2_state_dict'])
 
             with torch.no_grad():
@@ -311,12 +400,11 @@ def main(random_state=777):
                     tensors, labels1, labels2, file_name = tensors.to(device), labels1.to(device), labels2.to(
                         device), file_name
                     tensors1 = tensors.squeeze(0)
-                    outputs = torch.nn.functional.softmax(model(tensors1), dim=1).mean(dim=0).unsqueeze(0)
-                    if (torch.argmax(outputs, dim=1).item() == 0):  # disease
-                        outputs = torch.nn.functional.softmax(model2(tensors1), dim=1).mean(dim=0).unsqueeze(0)
-                        if labels2 == 0:
-                            with open(f"{i}/{i}.log", "a") as f:
-                                f.write(f'file:{file_name}, point:{outputs[0, 1].item() + outputs[0, 0].item() * 2}\n')
+                    outputs = torch.nn.functional.softmax(model2(tensors1), dim=1)
+                    if labels1 == 1: #disease
+                        with open(f"{i}/{i}.log", "a") as f:
+                            f.write(f'file:{file_name}, point:{outputs[0, 1].item()}\n')
+
 
     folders = ["1", "2", "3", "4", "5"]
     records = []
@@ -324,7 +412,7 @@ def main(random_state=777):
         log_file = os.path.join(path, folder, f"{folder}.log")
         with open(log_file, "r") as f:
             for line in f:
-                if "point" in line:   # 只保留含 point 的行
+                if "point" in line:  # 只保留含 point 的行
                     # 删除无用字符，保留 样本名 和 分数
                     clean = re.sub(r"file:\('", "", line)
                     clean = re.sub(r"',\), point:\s*", "\t", clean)
@@ -342,6 +430,27 @@ def main(random_state=777):
     # 输出
     output_file = "point.tsv"
     result.to_csv(output_file, sep="\t", index=False)
+    print("Starting regression analysis...")
+
+    gene_df, cell_df, score_df = build_features(
+    h5ad_dir,
+    "point.csv", hvg,
+    celltype_col="cell_type"
+    )
+
+    scores = score_df.set_index("sample").loc[gene_df.index]["avg_score"]
+
+    run_univariate(
+    gene_df,
+    scores,
+    "high-impact_gene.tsv"
+    )
+
+    run_univariate(
+    cell_df,
+    scores,
+    "high-impact_celltype.tsv"
+    )
 
 if __name__ == '__main__':
-    main(random_state=555)
+    main()
