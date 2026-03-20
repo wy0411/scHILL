@@ -10,10 +10,9 @@ import numpy as np
 import random
 import torch.nn.init as init
 import pandas as pd
-
-#If you want to use specific size or specific genes, you may modify line 69, 72, 73, 89, 90, 121, 135. If you perform benchmarking, make sure line 72 denote the expression level of RPS18. 
-
+#If you would like to perform benchmarking in COVID-19 prediction, please modify line 71
 path = '/path/to/your/data'
+
 class mae2(nn.Module):
     def __init__(self):
         super(mae2, self).__init__()
@@ -63,31 +62,30 @@ def filter_genes(adata, expression_matrix, gene_list):
             filtered_matrix[:, i] = expression_matrix[:, gene_indices[gene]]
     return filtered_matrix
 
-def sort_and_select_genes(adata, expression_matrix, gene_list):
+def sort_and_select_genes(adata, expression_matrix, gene_list, n):
     sorted_genes = sorted(gene_list)
     expression_matrix = filter_genes(adata, expression_matrix, sorted_genes)
-    return expression_matrix[:, :2240]
+    return expression_matrix[:, :n*448]
 
-def sort_and_select_cells(expression_matrix):
-    sorted_indices = np.argsort(-expression_matrix[:, 2041]) #sort cells with expression level of RPS18
-    return expression_matrix[sorted_indices[:2240], :]
+def sort_and_select_cells(expression_matrix, n):
+    sorted_indices = np.argsort(-expression_matrix[:, 2041]) #please make sure that this column in the expression matrix is RPS18
+    return expression_matrix[sorted_indices[:n*448], :]
 
-def get_final_matrix(file_path, gene_list_path):
+def get_final_matrix(file_path, gene_list_path, n):
     adata, expression_matrix = load_and_process_data(file_path)
     if adata is None:
         return None
 
     with open(gene_list_path, 'r') as f:
         gene_list = f.read().splitlines()
-
-    expression_matrix = sort_and_select_genes(adata, expression_matrix, gene_list)
-    expression_matrix = sort_and_select_cells(expression_matrix)
+    expression_matrix = sort_and_select_cells(expression_matrix,n)
+    expression_matrix = sort_and_select_genes(adata, expression_matrix, gene_list,n)
 
     return expression_matrix
-def matrix2tensor(matrix):
+def matrix2tensor(matrix, n):
 
-    row_split = np.split(matrix, 5, axis=0)#average split for row (cells)
-    matrix2 = np.array([np.split(sub_matrix, 5, axis=1) for sub_matrix in row_split]).reshape(25, 448, 448)#average split for column (genes)
+    row_split = np.split(matrix, n, axis=0)#average split for row (cells)
+    matrix2 = np.array([np.split(sub_matrix, n, axis=1) for sub_matrix in row_split]).reshape(n*n, 448, 448)#average split for column (genes)
     tensor = torch.from_numpy(matrix2).float()
     dataset = TensorDataset(tensor, tensor)
     return dataset
@@ -117,26 +115,26 @@ if __name__ == "__main__":
     model_mae2.load_state_dict(model_checkpoint['model_mae2_state_dict'])
 
     input_folder = "./h5ad"
-    output_folder = "./tensors"
     gene_list_path = './hvg' # your own HVG file
-    os.makedirs(output_folder, exist_ok=True)
-    #with open("./h5ad", "r") as f:
-    #    valid_filenames = [line.strip() for line in f]
-    # 遍历文件夹中所有 .h5ad 文件
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".h5ad"):
-            file_path = os.path.join(input_folder, filename)
 
-
-            expression_matrix = get_final_matrix(file_path, gene_list_path)
-
-
-            dataset = matrix2tensor(expression_matrix)
-            data_loader = DataLoader(dataset, batch_size=25, shuffle=False)#batchsize X should be the same with N ,where (N,224,224) in line 90
-
-            output_tensor = train(model_mae2, data_loader, device=device)
-
-            output_filename = os.path.splitext(filename)[0] + ".pt"
-            output_file_path = os.path.join(output_folder, output_filename)
-
-            torch.save(output_tensor, output_file_path)
+    for n in range(5):
+        n = n+1
+        output_folder = f"./tensors_{n*448}_{n*448}"
+        os.makedirs(output_folder, exist_ok=True)
+        for filename in os.listdir(input_folder):
+            if filename.endswith(".h5ad"):
+                file_path = os.path.join(input_folder, filename)
+        
+        
+                expression_matrix = get_final_matrix(file_path, gene_list_path,n)
+        
+        
+                dataset = matrix2tensor(expression_matrix,n)
+                data_loader = DataLoader(dataset, batch_size=n*n, shuffle=False)#batchsize X should be the same with N ,where (N,224,224) in line 90
+        
+                output_tensor = train(model_mae2, data_loader, device=device)
+        
+                output_filename = os.path.splitext(filename)[0] + ".pt"
+                output_file_path = os.path.join(output_folder, output_filename)
+        
+                torch.save(output_tensor, output_file_path)
