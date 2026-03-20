@@ -134,7 +134,7 @@ if __name__ == "__main__":
         
         
                 dataset = matrix2tensor(expression_matrix,n)
-                data_loader = DataLoader(dataset, batch_size=n*n, shuffle=False)#batchsize X should be the same with N ,where (N,224,224) in line 90
+                data_loader = DataLoader(dataset, batch_size=n*n, shuffle=False)
         
                 output_tensor = train(model_mae2, data_loader, device=device)
         
