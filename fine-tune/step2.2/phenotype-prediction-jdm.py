@@ -174,36 +174,84 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         #      f'Recall: {val_recall:.4f}, F1 Score: {val_f1:.4f}, MCC: {val_mcc:.4f}', flush=True)
         #print(classification_report(val_labels, val_preds, target_names=['JDM', 'Control']))
     return result_precision,result_recall,result_f1
-def main(random_state=777):
-    os.chdir(path)
-    tensor_val_dir = './tensors'
-    labels_val_dir = './tensors/label.csv' #label file
-    dataset_val = TensorDataset(tensor_val_dir, labels_val_dir)
-    labels1 = dataset_val.labels1
-    train_data, val_data = train_test_split(dataset_val, test_size=0.4, random_state=random_state,stratify=labels1)
+
+def run_single_experiment(tensor_dir, labels_file, random_state=777):
+    dataset = TensorDataset(tensor_dir, labels_file)
+    labels1 = dataset.labels1
+
+    train_data, val_data = train_test_split(
+        dataset, test_size=0.4, random_state=random_state, stratify=labels1
+    )
+
     labels2 = [item[1] for item in val_data]
-    val_data, test_data = train_test_split(val_data, test_size=0.5, random_state=random_state, stratify=labels2)
+    val_data, test_data = train_test_split(
+        val_data, test_size=0.5, random_state=random_state, stratify=labels2
+    )
+
     train_loader = DataLoader(train_data, batch_size=1, shuffle=False)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
-    
+
     hidden_size1 = 64
     hidden_size3 = 64
     hidden_size5 = 64
-    num_classes = 2
     num_epochs = 500
     learning_rate = 5e-2
 
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    torch.cuda.manual_seed(random_state)
-    torch.cuda.manual_seed_all(random_state)
+
     model2 = MLP2(hidden_size1, hidden_size3, hidden_size5).to(device)
     early_stopping = EarlyStopping(patience=50, delta=0, verbose=False)
     criterion = nn.CrossEntropyLoss()
-    #optimizer = optim.AdamW(model.parameters(), lr= learning_rate , betas=(0.9, 0.999))
-    optimizer2 = optim.AdamW(model2.parameters(), lr= learning_rate/5 , betas=(0.9, 0.999))
-    result_precision,result_recall,result_f1 = train_model(model2,criterion, optimizer2, train_loader, val_loader, test_loader, num_epochs, device, early_stopping)
-    print(f'precision:{result_precision}, recall:{result_recall}, f1:{result_f1}')
+    optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate/5)
+
+    precision, recall, f1 = train_model(
+        model2, criterion, optimizer2,
+        train_loader, val_loader, test_loader,
+        num_epochs, device, early_stopping
+    )
+
+    return precision, recall, f1
+
+
+def main(random_state=777):
+    os.chdir(path)
+
+    # 自动生成5个尺度
+    tensor_dirs = [f'./tensors_{224*i}_{224*i}' for i in range(1, 6)]
+
+    labels_file = './label.csv'
+
+    results = {}
+
+    for tensor_dir in tensor_dirs:
+        print(f"\nRunning experiment on: {tensor_dir}", flush=True)
+
+        if not os.path.exists(tensor_dir):
+            print(f"Skip {tensor_dir}, not found!", flush=True)
+            continue
+
+        precision, recall, f1 = run_single_experiment(
+            tensor_dir, labels_file, random_state
+        )
+
+        results[tensor_dir] = {
+            "precision": precision,
+            "recall": recall,
+            "f1": f1
+        }
+
+        print(f"{tensor_dir} -> precision: {precision:.4f}, recall: {recall:.4f}, f1: {f1:.4f}", flush=True)
+
+    # 选最优（按F1）
+    best_dir = max(results, key=lambda x: results[x]["f1"])
+    best_result = results[best_dir]
+
+    print("\n===== BEST RESULT =====")
+    print(f"Best folder: {best_dir}")
+    print(f"Precision: {best_result['precision']:.4f}")
+    print(f"Recall: {best_result['recall']:.4f}")
+    print(f"F1-score: {best_result['f1']:.4f}")
 
 if __name__ == '__main__':
     seed_torch(777)
