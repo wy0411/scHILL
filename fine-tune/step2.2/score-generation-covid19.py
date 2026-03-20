@@ -13,6 +13,10 @@ import numpy as np
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
 import re
+import scanpy as sc
+from sklearn.linear_model import LinearRegression
+from scipy.stats import pearsonr
+
 path = '/path/to/your/data'
 
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
