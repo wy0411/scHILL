@@ -355,7 +355,7 @@ def run_univariate(X, y, output_file):
 
 def main(random_state=777):
     os.chdir(path)
-    tensor_dir = './tensors'
+    tensor_dir = './tensors_xxx_xxx' #the Best folder depends on output of phenotype-prediction-covid19.py. Please run phenotype-prediction-covid19.py firstly.
     labels_file = './tensors/label.csv' #label file
     h5ad_dir = './h5ad'
     hvg = './hvg'
