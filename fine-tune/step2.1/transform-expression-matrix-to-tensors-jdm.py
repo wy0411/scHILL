@@ -64,8 +64,8 @@ def sort_and_select_genes(adata, expression_matrix, gene_list):
 
     col_means = np.var(expression_matrix, axis=0)
     sorted_col_indices = np.argsort(-col_means)
-    selected_matrix = expression_matrix[:, sorted_col_indices[:224]]
-    selected_genes = [sorted_genes[i] for i in sorted_col_indices[:224]]
+    selected_matrix = expression_matrix[:, sorted_col_indices[:n*224]]
+    selected_genes = [sorted_genes[i] for i in sorted_col_indices[:n*224]]
 
     return selected_matrix, selected_genes
 
@@ -74,7 +74,7 @@ def sort_and_select_cells(expression_matrix):
     col_means = np.mean(expression_matrix, axis=1)
     sorted_col_indices = np.argsort(col_means)
 
-    return expression_matrix[sorted_col_indices[:224], :]
+    return expression_matrix[sorted_col_indices[:n*224], :]
 
 
 def get_final_matrix(file_path, gene_list_path):
@@ -118,20 +118,27 @@ if __name__ == "__main__":
     single_cell_checkpoint = torch.load(single_cell_model_path)
     model_mae2.load_state_dict(single_cell_checkpoint['model_mae2_state_dict'])
 
-    input_folder = './h5ad'
-    output_folder = './tensors'
-    gene_list_path = './hvg' # the hvg file
-    os.makedirs(output_folder, exist_ok=True)
-    all_selected_genes = set()
-    # 遍历文件夹中所有 .h5ad 文件
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".h5ad"):
-            file_path = os.path.join(input_folder, filename)
-            expression_matrix, selected_genes = get_final_matrix(file_path, gene_list_path)
-            #all_selected_genes.update(selected_genes)
-            dataset = matrix2tensor(expression_matrix)
-            data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
-            output_tensor = train(model_mae2, data_loader, device=device)
-            output_filename = os.path.splitext(filename)[0] + ".pt"
-            output_file_path = os.path.join(output_folder, output_filename)
-            torch.save(output_tensor, output_file_path)
+    input_folder = "./h5ad"
+    gene_list_path = './hvg' # your own HVG file
+
+    for n in range(5):
+        n = n+1
+        output_folder = f"./tensors_{n*224}_{n*224}"
+        os.makedirs(output_folder, exist_ok=True)
+        for filename in os.listdir(input_folder):
+            if filename.endswith(".h5ad"):
+                file_path = os.path.join(input_folder, filename)
+        
+        
+                expression_matrix = get_final_matrix(file_path, gene_list_path,n)
+        
+        
+                dataset = matrix2tensor(expression_matrix,n)
+                data_loader = DataLoader(dataset, batch_size=n*n, shuffle=False)#batchsize X should be the same with N ,where (N,224,224) in line 90
+        
+                output_tensor = train(model_mae2, data_loader, device=device)
+        
+                output_filename = os.path.splitext(filename)[0] + ".pt"
+                output_file_path = os.path.join(output_folder, output_filename)
+        
+                torch.save(output_tensor, output_file_path))
