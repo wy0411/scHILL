@@ -13,6 +13,10 @@ import numpy as np
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
 import re
+import scanpy as sc
+from sklearn.linear_model import LinearRegression
+from scipy.stats import pearsonr
+
 path = '/path/to/your/data'
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
@@ -166,11 +170,101 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, num_epo
 
     return val_accuracy, val_precision, val_recall, val_f1, val_mcc
 
+def build_features(h5ad_dir, score_file,hvg_file ,celltype_col="cluster_label"):
+
+    score_df = pd.read_csv(score_file, sep=",")
+    samples = score_df["sample"].tolist()
+        # 读取 HVG
+    with open(hvg_file) as f:
+        hvg = [line.strip() for line in f]
+    
+    gene_features = []
+    cell_features = []
+
+    for sample in samples:
+
+        h5_path = os.path.join(h5ad_dir, sample + ".h5ad")
+        adata = sc.read_h5ad(h5_path)
+        genes = [g for g in hvg if g in adata.var_names]
+        adata = adata[:, genes]
+        X = adata.X
+        if not isinstance(X, np.ndarray):
+            X = X.toarray()
+
+        # =====================
+        # 1 pseudobulk gene
+        # =====================
+
+        pseudobulk = X.mean(axis=0)
+        gene_features.append(pseudobulk)
+
+        # =====================
+        # 2 cell proportion
+        # =====================
+
+        counts = adata.obs[celltype_col].value_counts()
+        prop = counts / counts.sum()
+
+        cell_features.append(prop)
+
+    gene_features = np.vstack(gene_features)
+
+    gene_df = pd.DataFrame(
+        gene_features,
+        index=samples,
+        columns=adata.var_names
+    )
+
+    cell_df = pd.DataFrame(cell_features, index=samples).fillna(0)
+
+    return gene_df, cell_df, score_df
+
+def run_univariate(X, y, output_file):
+
+    results = []
+
+    for gene in X.columns:
+
+        x = X[[gene]].values
+
+        model = LinearRegression()
+        model.fit(x, y)
+
+        coef = model.coef_[0]
+        intercept = model.intercept_
+        r2 = model.score(x, y) 
+        r, p = pearsonr(X[gene], y)
+
+        results.append([
+            gene,
+            coef,
+            r2,
+            intercept,
+            r,
+            p
+        ])
+
+    result_df = pd.DataFrame(
+        results,
+        columns=["feature","coef","R2","intercept","correlation","pvalue"]
+    )
+
+    result_df = result_df.sort_values(
+        "correlation",
+        key=np.abs,
+        ascending=False
+    )
+
+    result_df.to_csv(output_file, sep="\t", index=False)
+
+    print(f"{len(result_df)} features tested")
 
 def main():
     os.chdir(path)
     tensor_dir = './tensors'
-    labels_file = './tensors/label.csv' #label file
+    labels_file = './label.csv' #label file
+    h5ad_dir = './h5ad'
+    hvg = './hvg'
     dataset = TensorDataset(tensor_dir, labels_file)
     input_size = 784 * 256
     hidden_size1 = 784
@@ -245,6 +339,25 @@ def main():
     output_file = "point.tsv"
     result.to_csv(output_file, sep="\t", index=False)
 
+    gene_df, cell_df, score_df = build_features(
+    h5ad_dir,
+    "point.csv","hvg",
+    celltype_col="cell_type"
+    )
 
+    scores = score_df.set_index("sample").loc[gene_df.index]["avg_score"]
+
+    run_univariate(
+    gene_df,
+    scores,
+    "high-impact_gene.tsv"
+    )
+
+    run_univariate(
+    cell_df,
+    scores,
+    "high-impact_celltype.tsv"
+    )
+    
 if __name__ == '__main__':
     main()
