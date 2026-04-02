@@ -30,8 +30,7 @@ class TensorDataset(Dataset):
         self.labels = pd.read_csv(labels_file)
         self.file_names = self.labels['name']
         self.labels1 = self.labels['label'].apply(self.label_to_index).values
-        self.labels2 = self.labels['label2'].apply(self.label_to_index2).values
-
+       
     def __len__(self):
         return len(self.file_names)
 
@@ -39,20 +38,11 @@ class TensorDataset(Dataset):
         tensor_path = os.path.join(self.tensor_dir, self.file_names[idx] + '.pt')
         tensor = torch.load(tensor_path)
         label1 = self.labels1[idx]
-        label2 = self.labels2[idx]
-        return tensor, label1, label2
+        return tensor, label1
 
     def label_to_index(self, label):
         label_dict1 = {'JD':0, 'C':1}
         return label_dict1[label]
-
-    def label_to_index2(self, label):
-        label_dict2 = {'a': 0}
-        return label_dict2[label]
-
-
-
-
 # 定义MLP模型
 
 class MLP2(nn.Module):
@@ -109,8 +99,8 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         # Training
         model2.train()
 
-        for tensors, labels1, labels2 in train_loader:
-            tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
+        for tensors, labels1 in train_loader:
+            tensors, labels1 = tensors.to(device), labels1.to(device)
             tensors = tensors.squeeze(0)
             # 前向传播
             outputs = model2(tensors)
@@ -125,8 +115,8 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         val_labels = []
         val_preds = []
         with torch.no_grad():
-            for tensors, labels1, labels2 in val_loader:
-                tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
+            for tensors, labels1 in val_loader:
+                tensors, labels1 = tensors.to(device), labels1.to(device)
                 tensors = tensors.squeeze(0)
                 #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
                 outputs = model2(tensors)
@@ -152,8 +142,8 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, test_lo
         val_labels = []
         val_preds = []
         #Test
-        for tensors, labels1, labels2 in test_loader:
-                tensors, labels1, labels2 = tensors.to(device), labels1.to(device), labels2.to(device)
+        for tensors, labels1 in test_loader:
+                tensors, labels1 = tensors.to(device), labels1.to(device)
                 tensors = tensors.squeeze(0)
                 #outputs = torch.nn.functional.softmax(model2(tensors1),dim=1).mean(dim=0).unsqueeze(0)
                 outputs = model2(tensors)
