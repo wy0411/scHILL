@@ -341,7 +341,7 @@ def main():
 
     gene_df, cell_df, score_df = build_features(
     h5ad_dir,
-    "point.csv","hvg",
+    "point.tsv","hvg",
     celltype_col="cell_type"
     )
 
