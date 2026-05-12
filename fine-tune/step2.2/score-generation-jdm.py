@@ -172,7 +172,7 @@ def train_model(model2, criterion, optimizer2, train_loader, val_loader, num_epo
 
 def build_features(h5ad_dir, score_file,hvg_file ,celltype_col="cluster_label"):
 
-    score_df = pd.read_csv(score_file, sep=",")
+    score_df = pd.read_csv(score_file, sep="\t")
     samples = score_df["sample"].tolist()
         # 读取 HVG
     with open(hvg_file) as f:
@@ -341,7 +341,7 @@ def main():
 
     gene_df, cell_df, score_df = build_features(
     h5ad_dir,
-    "point.tsv","hvg",
+    "point.tsv",hvg,
     celltype_col="cell_type"
     )
 
