@@ -266,7 +266,7 @@ def train_model(model, model2, criterion, optimizer, optimizer2, train_loader, v
 
 def build_features(h5ad_dir, score_file,hvg_file ,celltype_col="cluster_label"):
 
-    score_df = pd.read_csv(score_file, sep=",")
+    score_df = pd.read_csv(score_file, sep="\t")
     samples = score_df["sample"].tolist()
         # 读取 HVG
     with open(hvg_file) as f:
