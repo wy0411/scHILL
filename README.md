@@ -15,3 +15,6 @@ Step 2.1 transforms scRNA-seq expression matrices to tensors, and "hvg" file pro
 <br>
 __Expanding application:__<br>
 scHILL were used for processing tensors with the shape (a x b, SIZE, SIZE), and 'N = a x b' could be any positive integer. scHILL can automatically identify an optimic N for different datasets. The models trained for the COVID-19 case were used for processing tensors with the shape (N, 448, 448) and we set a in range(1,5) and b in range(1,5) in this study. The models trained for the JDM case and cancer case were used for processing tensors with the shape (N, 224, 224)
+<br>
+# Citation
+https://doi.org/10.1093/bib/bbag286
